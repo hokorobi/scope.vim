@@ -1,5 +1,38 @@
 vim9script
 
+var keymaps: dict<any> = {
+    'menu_up': ["\<S-tab>", "\<C-p>", "\<Up>", "\<ScrollWheelUp>"],
+    'menu_down': ["\<tab>", "\<C-n>", "\<Down>", "\<ScrollWheelDown>"],
+    'menu_pagedown': ["\<PageDown>"],
+    'menu_pageup': ["\<PageUp>"],
+    'menu_select': ["\<CR>"],
+    'menu_select_split': ["\<C-j>"],
+    'menu_select_vsplit': ["\<C-v>"],
+    'menu_select_tab': ["\<C-t>"],
+    'cursor_left': ["\<Left>"],
+    'cursor_right': ["\<Right>"],
+    'cursor_word_left': ["\<C-Left>", "\<S-Left>"],
+    'cursor_word_right': ["\<C-Right>", "\<S-Right>"],
+    'cursor_begining': ["\<Home>", "\<C-b>"],
+    'cursor_end': ["\<End>", "\<c-e>"],
+    'delete_before': ["\<C-w>"],
+    'delete_between_begining': ["\<C-u>"],
+    'backspace': ["\<bs>", "\<C-h>"],
+    'recall_history_next': ["\<S-Down>", "\<C-Down>"],
+    'recall_history_previous': ["\<S-Up>", "\<C-Up>"],
+    'register_prefix': ["\<C-r>"],
+    'insert_cword': ["\<C-w>"],
+    'insert_cWORD': ["\<C-a>"],
+    'insert_line': ["\<C-l>"],
+    'send_filtered_items_buffer_list': ["\<C-o>"],
+    'send_filtered_items_argument_list': ["\<C-g>"],
+    'send_filtered_items_quickfix_list': ["\<C-Q>"],
+    'send_all_items_quickfix_list': ["\<C-q>"],
+    'send_filtered_items_location_list': ["\<C-L>"],
+    'send_all_items_location_list': ["\<C-l>"],
+    'exit': ["\<Esc>", "\<c-c>", "\<c-[>"],
+}
+
 export var options = {
     borderchars: ['─', '│', '─', '│', '┌', '┐', '┘', '└'],
     bordercharsp: ['─', '│', '═', '│', '┌', '┐', '╡', '╞'],
@@ -16,6 +49,19 @@ export var options = {
     # cursorchar: '█',
     emacsKeys: false,
 }
+
+if options.emacsKeys
+  add(keymaps['cursor_left'], "\<C-b>")
+  add(keymaps['cursor_right'], "\<C-f>")
+  add(keymaps['cursor_word_left'], "\<A-b>")
+  add(keymaps['cursor_word_right'], "\<A-f>")
+  add(keymaps['cursor_begining'], "\<C-a>")
+endif
+
+keymaps = exists('g:scope_keymaps') && type(g:scope_keymaps) == v:t_dict ?
+    extend(keymaps, g:scope_keymaps) : keymaps
+
+options.keymaps = keymaps
 
 export def OptionsSet(opt: dict<any>)
     options->extend(opt)
@@ -139,28 +185,63 @@ export class FilterMenu
             this._CommonProps(options.borderchars, pos_top + 3, height)->extend({
                 border: [0, 1, 1, 1],
                 filter: (id, key) => {
-                    if key == "\<C-r>"
+                    var resultkey: string
+
+                    if index(options.keymaps['register_prefix'], key) >= 0
                         ctrl_r_active = true
-                    elseif ["\<C-w>", "\<C-a>", "\<C-l>"]->index(key) == -1 && key !~ '\p'
+                    elseif (index(options.keymaps['insert_cword'], key) == -1 ||
+                            index(options.keymaps['insert_cWORD'], key) == -1 ||
+                            index(options.keymaps['insert_line'], key) == -1) &&
+                           key !~ '\p'
                         ctrl_r_active = false
                     endif
                     items_count = this.items_dict->len()
-                    if key == "\<esc>"
+                    if index(options.keymaps['exit'], key) >= 0
                         this.idp->popup_close(-1)
                         id->popup_close(-1)
                         if Cleanup != null_function
                             Cleanup()
                         endif
-                    elseif ["\<cr>", "\<C-j>", "\<C-v>", "\<C-t>", "\<C-o>", "\<C-g>", "\<C-Q>"]->index(key) > -1 ||
-                            (!ctrl_r_active && key == "\<C-L>")  # <C-L> matches both <C-L> and <C-l>
+                    elseif index(options.keymaps['menu_select'], key) >= 0 ||
+                           index(options.keymaps['menu_select_split'], key) >= 0 ||
+                           index(options.keymaps['menu_select_vsplit'], key) >= 0 ||
+                           index(options.keymaps['menu_select_tab'], key) >= 0 ||
+                           index(options.keymaps['send_filtered_items_buffer_list'], key) >= 0 ||
+                           index(options.keymaps['send_filtered_items_argument_list'], key) >= 0 ||
+                           index(options.keymaps['send_filtered_items_quickfix_list'], key) >= 0 ||
+                           index(options.keymaps['send_all_items_quickfix_list'], key) >= 0 ||
+                            (!ctrl_r_active && (index(options.keymaps['send_filtered_items_quickfix_list'], key) >= 0 || index(options.keymaps['send_all_items_quickfix_list'], key) >= 0))
+                        if index(options.keymaps['menu_select'], key) >= 0
+                            resultkey = "\<CR>"
+                        elseif index(options.keymaps['menu_select_split'], key) >= 0
+                            resultkey = "\<C-j>"
+                        elseif index(options.keymaps['menu_select_vsplit'], key) >= 0
+                            resultkey = "\<C-v>"
+                        elseif index(options.keymaps['menu_select_tab'], key) >= 0
+                            resultkey = "\<C-t>"
+                        elseif index(options.keymaps['send_filtered_items_buffer_list'], key) >= 0
+                            resultkey = "\<C-o>"
+                        elseif index(options.keymaps['send_filtered_items_argument_list'], key) >= 0
+                            resultkey = "\<C-g>"
+                        elseif index(options.keymaps['send_filtered_items_quickfix_list'], key) >= 0
+                            resultkey = "\<C-Q>"
+                        elseif index(options.keymaps['send_all_items_quickfix_list'], key) >= 0
+                            resultkey = "\<C-q>"
+                        elseif index(options.keymaps['send_filtered_items_location_list'], key) >= 0
+                            resultkey = "\<C-L>"
+                        elseif index(options.keymaps['send_all_items_location_list'], key) >= 0
+                            resultkey = "\<C-l>"
+                        else
+                            resultkey = key
+                        endif
                         this.idp->popup_close(-1)
                         if this.filtered_items[0]->len() > 0 && items_count > 0
-                            id->popup_close({idx: getcurpos(id)[1], key: key})
+                            id->popup_close({idx: getcurpos(id)[1], key: resultkey})
                         else
                             # close the popup window for <cr> when popup window is empty
                             id->popup_close(-1)
                         endif
-                    elseif key == "\<Right>" || key == "\<PageDown>" || (options.emacsKeys && key == "\<C-f>")
+                    elseif index(options.keymaps['cursor_right'], key) >= 0 || index(options.keymaps['menu_pagedown'], key) >= 0
                         if this.idp->getmatches()->indexof((_, v) => v.group == 'ScopeMenuVirtualText') != -1
                             # virtual text present. grep using virtual text.
                             this.prompt = this.idp->getwininfo()[0].bufnr->getbufline(1)[0]->slice(2)
@@ -169,7 +250,7 @@ export class FilterMenu
                             [this.items_dict, this.filtered_items] = GetFilteredItemsFn(this.items_dict, this.prompt)
                             this._SetPopupContent()
                         else
-                            if key == "\<Right>" || (options.emacsKeys && key == "\<C-f>")
+                            if index(options.keymaps['cursor_right'], key) >= 0
                                 if this.cursorpos < (3 + this.prompt->strcharlen())
                                     this.cursorpos = this.cursorpos + 1
                                     this._CursorSet()
@@ -178,12 +259,12 @@ export class FilterMenu
                                 win_execute(id, 'normal! ' .. "\<C-d>")
                             endif
                         endif
-                    elseif key == "\<Left>" || (options.emacsKeys && key == "\<C-b>")
+                    elseif index(options.keymaps['cursor_left'], key) >= 0
                         if this.cursorpos > 3
                             this.cursorpos = this.cursorpos - 1
                             this._CursorSet()
                         endif
-                    elseif key == "\<C-Right>" || key == "\<S-Right>" || (options.emacsKeys && key == "\<A-f>")
+                    elseif index(options.keymaps['cursor_word_right'], key) >= 0
                         if this.cursorpos < (3 + this.prompt->strcharlen())
                             var pos = this.cursorpos - 3
                             var byteidx = this.prompt->stridx(' ', this.prompt->byteidx(pos) + 1)
@@ -194,7 +275,7 @@ export class FilterMenu
                             endif
                             this._CursorSet()
                         endif
-                    elseif key == "\<C-Left>" || key == "\<S-Left>" || (options.emacsKeys && key == "\<A-b>")
+                    elseif index(options.keymaps['cursor_word_left'], key) >= 0
                         if this.cursorpos > 3
                             var pos = this.cursorpos - 3
                             if pos > 1 && this.prompt[pos - 1] == ' ' && this.prompt[pos - 2] == ' '
@@ -205,25 +286,25 @@ export class FilterMenu
                             endif
                             this._CursorSet()
                         endif
-                    elseif key == "\<PageUp>"
+                    elseif index(options.keymaps['menu_pageup'], key) >= 0
                         win_execute(id, 'normal! ' .. "\<C-u>")
-                    elseif key == "\<Home>" || (!options.emacsKeys && key == "\<C-b>") || (options.emacsKeys && key == "\<C-a>")
+                    elseif index(options.keymaps['cursor_begining'], key) >= 0
                         if this.cursorpos > 3
                             this.cursorpos = 3
                             this._CursorSet()
                         endif
-                    elseif key == "\<End>" || key == "\<C-e>" 
+                    elseif index(options.keymaps['cursor_end'], key) >= 0
                         if this.cursorpos < (3 + this.prompt->strcharlen())
                             this.cursorpos = 3 + this.prompt->strcharlen()
                             this._CursorSet()
                         endif
-                    elseif ["\<tab>", "\<C-n>", "\<Down>", "\<ScrollWheelDown>"]->index(key) > -1
+                    elseif index(options.keymaps['menu_down'], key) >= 0
                         var ln = getcurpos(id)[1]
                         win_execute(id, "normal! j")
                         if ln == getcurpos(id)[1]
                             win_execute(id, "normal! gg")
                         endif
-                    elseif ["\<S-tab>", "\<C-p>", "\<Up>", "\<ScrollWheelUp>"]->index(key) > -1
+                    elseif index(options.keymaps['menu_up'], key) >= 0
                         var ln = getcurpos(id)[1]
                         win_execute(id, "normal! k")
                         if ln == getcurpos(id)[1]
@@ -233,10 +314,10 @@ export class FilterMenu
                             # ignoring double clicks, which are 6 char long: `<80><fc> <80><fd>.`
                             strchars(key) != 6 &&
                             ignore_input_utf8->index(str2list(key)) == -1
-                        if ["\<S-Up>", "\<S-Down>", "\<C-Up>", "\<C-Down>"]->index(key) > -1
+                        if index(options.keymaps['recall_history_next'], key) >= 0 || index(options.keymaps['recall_history_previous'], key) >= 0
                             if history->has_key(this.title)
                                 var listlen = history[this.title]->len()
-                                if key == "\<C-Up>" || key == "\<S-Up>"
+                                if index(options.keymaps['recall_history_previous'], key) >= 0
                                     this.history_idx = (this.history_idx > 0) ? this.history_idx - 1 : listlen - 1
                                 else
                                     this.history_idx = (this.history_idx < 0 || this.history_idx > (listlen - 2)) ?
@@ -245,13 +326,13 @@ export class FilterMenu
                                 this.prompt = history[this.title][this.history_idx]
                                 this.cursorpos = 3 + this.prompt->strcharlen()
                             endif
-                        elseif key == "\<C-U>"
+                        elseif index(options.keymaps['delete_between_begining'], key) >= 0
                             if this.prompt == null_string
                                 return true
                             endif
                             this.prompt = null_string
                             this.cursorpos = 3
-                        elseif !ctrl_r_active && key == "\<C-w>"
+                        elseif !ctrl_r_active && index(options.keymaps['delete_before'], key) >= 0
                             if this.prompt == null_string
                                 return true
                             endif
@@ -265,20 +346,23 @@ export class FilterMenu
                                 this.cursorpos = 3 + this.prompt->strcharlen()
                                 this.prompt = this.prompt .. right
                             endif
-                        elseif key == "\<C-h>" || key == "\<bs>"
+                        elseif index(options.keymaps['backspace'], key) >= 0
                             if this.prompt == null_string
                                 return true
                             endif
                             this.cursorpos = this.cursorpos - 1
                             var pos = this.cursorpos - 3
                             this.prompt = this.prompt->slice(0, pos) .. this.prompt->slice(pos + 1)
-                        elseif ctrl_r_active && ["\<C-w>", "\<C-a>", "\<C-l>"]->index(key) > -1
-                            if key == "\<C-l>"
+                        elseif ctrl_r_active &&
+                            (index(options.keymaps['insert_cword'], key) >= 0 ||
+                             index(options.keymaps['insert_cWORD'], key) >= 0 ||
+                             index(options.keymaps['insert_line'], key) >= 0)
+                            if index(options.keymaps['insert_line'], key) >= 0
                                 this.prompt = getline('.')->trim()
                                 this.cursorpos = 3 + this.prompt->strcharlen()
                             else
                                 # vim bug: ..= and += are not working (https://github.com/vim/vim/issues/14236)
-                                var cword = (key == "\<C-w>") ? expand("<cword>")->trim() : expand("<cWORD>")->trim()
+                                var cword = (index(options.keymaps['insert_wrod'], key) >= 0) ? expand("<cword>")->trim() : expand("<cWORD>")->trim()
                                 this.prompt = this.prompt .. cword
                                 this.cursorpos = this.cursorpos + cword->strcharlen()
                             endif
