@@ -14,7 +14,7 @@ var keymaps: dict<any> = {
     'cursor_word_left': ["\<C-Left>", "\<S-Left>"],
     'cursor_word_right': ["\<C-Right>", "\<S-Right>"],
     'cursor_begining': ["\<Home>", "\<C-b>"],
-    'cursor_end': ["\<End>", "\<c-e>"],
+    'cursor_end': ["\<End>", "\<C-e>"],
     'delete_before': ["\<C-w>"],
     'delete_between_begining': ["\<C-u>"],
     'backspace': ["\<bs>", "\<C-h>"],
@@ -30,7 +30,7 @@ var keymaps: dict<any> = {
     'send_all_items_quickfix_list': ["\<C-q>"],
     'send_filtered_items_location_list': ["\<C-L>"],
     'send_all_items_location_list': ["\<C-l>"],
-    'exit': ["\<Esc>", "\<c-c>", "\<c-[>"],
+    'exit': ["\<Esc>", "\<C-c>", "\<C-[>"],
 }
 
 export var options = {
